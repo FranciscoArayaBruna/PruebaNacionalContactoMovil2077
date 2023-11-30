@@ -43,13 +43,13 @@ public class Controlador {
                         // Registro exitoso, actualiza el perfil del usuario con el nombre
                         FirebaseUser user = mAuth.getCurrentUser();
                         if (user != null) {
-                            UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
-                                    .setDisplayName(nombreUsuario)
-                                    .build();
-                            user.updateProfile(profileUpdates);
-                            // Crea un objeto UsuarioModel y guárdalo en la base de datos
+                            // Utiliza push() para generar una clave única
+                            String usuarioId = FirebaseManager.getDatabaseReference().child("Usuario").push().getKey();
+
+                            // Crea un objeto UsuarioModel y guárdalo en la base de datos con la clave generada
                             UsuarioModel nuevoUsuario = new UsuarioModel(nombre, apellido, correo, "", nombreUsuario);
-                            firebaseManager.guardarUsuarioEnFirebase(user.getUid(), nuevoUsuario);
+                            FirebaseManager.guardarUsuarioEnFirebase(usuarioId, nuevoUsuario);
+
                             // Notificar al listener que el registro fue exitoso
                             registroListener.onRegistroExitoso();
                         }

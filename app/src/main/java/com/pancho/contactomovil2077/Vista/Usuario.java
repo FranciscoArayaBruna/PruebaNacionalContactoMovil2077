@@ -114,6 +114,13 @@ public class Usuario extends AppCompatActivity {
             return;
         }
 
+        // Validar el formato del correo electrónico
+        if (!Patterns.EMAIL_ADDRESS.matcher(nombreUsuario).matches()) {
+            // El correo electrónico no es válido, muestra un mensaje de error
+            Toast.makeText(Usuario.this, "Correo electrónico no válido", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         // Autenticar al usuario en Firebase
         mAuth.signInWithEmailAndPassword(nombreUsuario, contrasena)
                 .addOnCompleteListener(this, task -> {
@@ -126,6 +133,7 @@ public class Usuario extends AppCompatActivity {
                     }
                 });
     }
+
 
     private void abrirMainActivity() {
         // Aquí puedes iniciar la actividad principal (MainActivity)

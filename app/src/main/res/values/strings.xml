@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">ContactoMovil2077</string>
+    <string name="description_my_image_button">Buscar</string>
+
 </resources>
