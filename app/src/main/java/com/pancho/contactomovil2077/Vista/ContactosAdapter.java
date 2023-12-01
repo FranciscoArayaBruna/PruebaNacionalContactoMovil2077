@@ -7,17 +7,16 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.pancho.contactomovil2077.Modelo.Contacto;
 import com.pancho.contactomovil2077.R;
 
 import java.util.List;
 
 public class ContactosAdapter extends RecyclerView.Adapter<ContactosAdapter.ContactoViewHolder> {
 
-    private List<Contacto> listaDeContactos;
+    private List<String> listaDeContactos;  // Cambiado a una lista de String
     private OnContactoClickListener onContactoClickListener;
 
-    public ContactosAdapter(List<Contacto> listaDeContactos, OnContactoClickListener onContactoClickListener) {
+    public ContactosAdapter(List<String> listaDeContactos, OnContactoClickListener onContactoClickListener) {
         this.listaDeContactos = listaDeContactos;
         this.onContactoClickListener = onContactoClickListener;
     }
@@ -31,9 +30,8 @@ public class ContactosAdapter extends RecyclerView.Adapter<ContactosAdapter.Cont
 
     @Override
     public void onBindViewHolder(@NonNull ContactoViewHolder holder, int position) {
-        Contacto contacto = listaDeContactos.get(position);
-        holder.textNombre.setText(contacto.getNombre());
-        holder.textCorreo.setText(contacto.getCorreo());
+        String contacto = listaDeContactos.get(position);
+        holder.textNombre.setText(contacto);
 
         // Manejar clics en elementos de la lista
         holder.itemView.setOnClickListener(v -> {
@@ -50,17 +48,16 @@ public class ContactosAdapter extends RecyclerView.Adapter<ContactosAdapter.Cont
 
     // Interfaz para manejar clics en elementos de la lista
     public interface OnContactoClickListener {
-        void onContactoClick(Contacto contacto);
+        void onContactoClick(String contacto);
     }
 
     // ViewHolder y otros métodos permanecen sin cambios
     public static class ContactoViewHolder extends RecyclerView.ViewHolder {
-        TextView textNombre, textCorreo;
+        TextView textNombre;
 
         public ContactoViewHolder(@NonNull android.view.View itemView) {
             super(itemView);
             textNombre = itemView.findViewById(R.id.textNombre);
-            textCorreo = itemView.findViewById(R.id.textCorreo);
         }
     }
 }

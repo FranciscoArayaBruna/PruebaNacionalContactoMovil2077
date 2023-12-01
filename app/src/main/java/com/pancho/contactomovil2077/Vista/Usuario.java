@@ -1,38 +1,42 @@
 package com.pancho.contactomovil2077.Vista;
 
-import static com.pancho.contactomovil2077.Controlador.FirebaseManager.mAuth;
-
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Patterns;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.pancho.contactomovil2077.Controlador.Controlador;
-import com.pancho.contactomovil2077.Modelo.UsuarioModel;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.pancho.contactomovil2077.R;
 
 public class Usuario extends AppCompatActivity {
 
     private EditText txtNombre, txtApellido, txtCorreo, txtPass, txtUsuario;
     private Button btnRegistro, btnLogin;
-
-    private Controlador controlador;
-    public Usuario() {
-        // Puedes dejarlo vacío o inicializar algunos valores aquí si es necesario
-    }
+    private FirebaseAuth mAuth;
+    private DatabaseReference mDatabase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_usuario);
+
+        // Inicializar FirebaseAuth y DatabaseReference
+        mAuth = FirebaseAuth.getInstance();
+        mDatabase = FirebaseDatabase.getInstance().getReference();
 
         // Obtener referencias a los componentes de la interfaz de usuario
         txtNombre = findViewById(R.id.txtNombre);
@@ -43,93 +47,95 @@ public class Usuario extends AppCompatActivity {
         btnRegistro = findViewById(R.id.btnRegistro);
         btnLogin = findViewById(R.id.btnLogin);
 
-        // Inicializar el controlador
-        controlador = new Controlador();
-
         // Asignar listeners a los botones
-        btnRegistro.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                registrarUsuario();
-            }
-        });
+        btnRegistro.setOnClickListener(view -> registrarUsuario());
 
-        btnLogin.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                iniciarSesion();
-            }
-        });
+        btnLogin.setOnClickListener(view -> iniciarSesion());
     }
 
     private void registrarUsuario() {
         // Obtener valores de los campos de texto
         String nombre = txtNombre.getText().toString();
         String apellido = txtApellido.getText().toString();
-        String correo = txtCorreo.getText().toString().trim(); // Trim para eliminar espacios adicionales
+        String correo = txtCorreo.getText().toString().trim();
         String contrasena = txtPass.getText().toString();
         String nombreUsuario = txtUsuario.getText().toString();
 
-        // Validar el formato del correo electrónico
-        if (TextUtils.isEmpty(correo) || !Patterns.EMAIL_ADDRESS.matcher(correo).matches()) {
-            // El correo electrónico no es válido, muestra un mensaje de error
-            Toast.makeText(Usuario.this, "Correo electrónico no válido", Toast.LENGTH_SHORT).show();
-            return;
+        // Validar los campos
+        if (camposRegistroSonValidos(nombre, apellido, correo, contrasena, nombreUsuario)) {
+            // Registrar nuevo usuario en Firebase
+            mAuth.createUserWithEmailAndPassword(correo, contrasena)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            FirebaseUser user = mAuth.getCurrentUser();
+                            if (user != null) {
+                                // Crear un nuevo nodo en la base de datos para el usuario
+                                DatabaseReference usuarioRef = mDatabase.child("Usuario").child(user.getUid());
+
+                                // Almacenar la información del usuario en la base de datos
+                                usuarioRef.child("nombre").setValue(nombre);
+                                usuarioRef.child("apellido").setValue(apellido);
+                                usuarioRef.child("correo").setValue(correo);
+                                usuarioRef.child("nombreUsuario").setValue(nombreUsuario);
+
+                                // Manejar el registro exitoso, si es necesario
+                                Toast.makeText(Usuario.this, "Registro exitoso", Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            Exception exception = task.getException();
+                            if (exception != null) {
+                                Log.e("RegistroFallido", "Error en el registro: " + exception.getMessage());
+                                if (exception.getMessage() != null && exception.getMessage().contains("email address is already in use")) {
+                                    Toast.makeText(Usuario.this, "El correo electrónico ya está registrado", Toast.LENGTH_SHORT).show();
+                                } else {
+                                    Toast.makeText(Usuario.this, "Error en el registro. Consulta el LogCat para más detalles.", Toast.LENGTH_SHORT).show();
+                                }
+                            }
+                        }
+                    });
         }
-        // Crear instancia de UsuarioModel
-        UsuarioModel nuevoUsuario = new UsuarioModel(nombre, apellido, correo, "", nombreUsuario);
-
-        // Registrar nuevo usuario en Firebase
-        controlador.registrarUsuario(correo, contrasena, nombre, apellido, nombreUsuario, new Controlador.RegistroListener() {
-            @Override
-            public void onRegistroExitoso() {
-                // Manejar el registro exitoso, si es necesario
-                Toast.makeText(Usuario.this, "Registro exitoso", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onRegistroFallido(String mensaje) {
-                // Manejar el fallo en el registro, si es necesario
-                Log.e("RegistroFallido", mensaje);
-                if (mensaje.contains("email address is already in use")) {
-                    Toast.makeText(Usuario.this, "El correo electrónico ya está registrado", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(Usuario.this, "Error en el registro. Consulta el LogCat para más detalles.", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
     }
 
+    private boolean camposRegistroSonValidos(String nombre, String apellido, String correo, String contrasena, String nombreUsuario) {
+        if (TextUtils.isEmpty(nombre) || TextUtils.isEmpty(apellido) || TextUtils.isEmpty(correo) ||
+                TextUtils.isEmpty(contrasena) || TextUtils.isEmpty(nombreUsuario)) {
+            // Mostrar un mensaje de error si algún campo está vacío
+            Toast.makeText(this, "Todos los campos son obligatorios", Toast.LENGTH_SHORT).show();
+            return false;
+        }
 
+        // Validar el formato del correo electrónico
+        if (!Patterns.EMAIL_ADDRESS.matcher(correo).matches()) {
+            // El correo electrónico no es válido, muestra un mensaje de error
+            Toast.makeText(this, "Correo electrónico no válido", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        return true;
+    }
 
     private void iniciarSesion() {
         // Obtener valores de los campos de texto
-        String nombreUsuario = txtUsuario.getText().toString().trim();
+        String correo = txtCorreo.getText().toString().trim();
         String contrasena = txtPass.getText().toString().trim();
 
-        // Validar que se ingresaron datos para iniciar sesión
-        if (TextUtils.isEmpty(nombreUsuario) || TextUtils.isEmpty(contrasena)) {
-            // Mostrar un mensaje de error
-            Toast.makeText(Usuario.this, "Ingresa nombre de usuario y contraseña para iniciar sesión", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Validar el formato del correo electrónico
-        if (!Patterns.EMAIL_ADDRESS.matcher(nombreUsuario).matches()) {
-            // El correo electrónico no es válido, muestra un mensaje de error
-            Toast.makeText(Usuario.this, "Correo electrónico no válido", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Autenticar al usuario en Firebase
-        mAuth.signInWithEmailAndPassword(nombreUsuario, contrasena)
-                .addOnCompleteListener(this, task -> {
-                    if (task.isSuccessful()) {
-                        // Inicio de sesión exitoso, abrir MainActivity
-                        abrirMainActivity();
-                    } else {
-                        // Fallo en el inicio de sesión, mostrar mensaje de error
-                        Toast.makeText(Usuario.this, "Error en el inicio de sesión: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+        mAuth.signInWithEmailAndPassword(correo, contrasena)
+                .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            finish();
+                            startActivity(new Intent(Usuario.this, ListaContactosActivity.class));
+                            Toast.makeText(Usuario.this, "Inicio de sesión exitoso", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(Usuario.this, "Perfil no encontrado", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Toast.makeText(Usuario.this, "Error al iniciar sesión", Toast.LENGTH_SHORT).show();
                     }
                 });
     }
@@ -142,7 +148,4 @@ public class Usuario extends AppCompatActivity {
         finish(); // Esto evita que el usuario regrese a la actividad de inicio de sesión presionando el botón "Atrás"
     }
 
-
-
 }
-

@@ -4,11 +4,10 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import com.pancho.contactomovil2077.Modelo.UsuarioModel;
 
 public class FirebaseManager {
 
-    public static FirebaseAuth mAuth;
+    private static FirebaseAuth mAuth;
     private static DatabaseReference mDatabase;
 
     FirebaseManager() {
@@ -29,14 +28,16 @@ public class FirebaseManager {
         return mDatabase;
     }
 
-    public static void guardarUsuarioEnFirebase(String uid, UsuarioModel usuario) {
-        DatabaseReference usuariosRef = getDatabaseReference().child("Usuario").child(uid);
-        usuariosRef.setValue(usuario);
+    public static void guardarUsuarioEnFirebase(String uid, String nombre, String apellido, String correo, String nombreUsuario) {
+        DatabaseReference usuarioRef = getDatabaseReference().child("Usuario").child(uid);
+        usuarioRef.child("nombre").setValue(nombre);
+        usuarioRef.child("apellido").setValue(apellido);
+        usuarioRef.child("correo").setValue(correo);
+        usuarioRef.child("nombreUsuario").setValue(nombreUsuario);
     }
 
-
     public static void cargarUsuarioDesdeFirebase(String uid, ValueEventListener valueEventListener) {
-        DatabaseReference usuariosRef = getDatabaseReference().child("usuarios").child(uid);
+        DatabaseReference usuariosRef = getDatabaseReference().child("Usuario").child(uid);
         usuariosRef.addListenerForSingleValueEvent(valueEventListener);
     }
 }
